@@ -1,0 +1,36 @@
+{
+  "name": "@apps/calendar-overlay-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs && electron dist/main.js",
+    "build": "node esbuild.config.mjs",
+    "package": "EXPORT=1 pnpm --filter @apps/calendar-overlay build && node esbuild.config.mjs && pnpm dlx electron-builder --mac",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "build": {
+    "appId": "kr.xingu.calendar-overlay",
+    "productName": "Calendar Overlay",
+    "asar": true,
+    "files": ["dist/**", "package.json"],
+    "extraResources": [{ "from": "../calendar-overlay/out", "to": "renderer" }],
+    "mac": {
+      "target": "zip",
+      "identity": null,
+      "category": "public.app-category.productivity"
+    },
+    "directories": { "output": "release" }
+  },
+  "dependencies": {
+    "@repo/calendar": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.4",
+    "electron": "^34.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "10.4.0",
+    "typescript": "6.0.3"
+  }
+}

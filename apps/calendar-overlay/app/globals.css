@@ -1,0 +1,623 @@
+/* 오버레이 renderer 전역 스타일 — 순수 CSS (Tailwind·@repo/tokens 미사용).
+   투명 창 위에 구글 캘린더풍 미니 데이뷰(시간비례 블록·중첩·now-line)를 띄운다. 색은 여기 .css 에
+   직접 둔다 (ESLint 는 .css 를 파싱하지 않음). 변수는 `--ov-` 프리픽스로 @repo/tokens 패리티 세트와
+   충돌 회피(dark-parity 게이트가 시맨틱 토큰명 override 를 막음 — 새 변수도 프리픽스 유지). */
+
+:root {
+  color-scheme: dark;
+  --ov-bg: rgba(18, 20, 26, 0.62);
+  --ov-bg-move: rgba(34, 38, 50, 0.78);
+  --ov-fg: rgba(255, 255, 255, 0.92);
+  --ov-fg-dim: rgba(255, 255, 255, 0.5);
+  --ov-fg-faint: rgba(255, 255, 255, 0.32);
+  --ov-line: rgba(255, 255, 255, 0.08);
+  --ov-accent: rgba(130, 175, 255, 0.95);
+  /* 캘린더 색이 없을 때 기본(구글 블루). */
+  --ov-block-default: rgba(66, 133, 244, 0.92);
+  /* now-line(구글 레드). */
+  --ov-now: rgba(234, 67, 53, 0.95);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: transparent;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+/* 카드는 창 전체를 채우고(데이뷰 패널), 내부 타임라인이 스크롤된다. */
+body {
+  display: flex;
+  align-items: stretch;
+  padding: 8px;
+}
+
+.overlay {
+  -webkit-app-region: no-drag;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  padding: 9px 10px;
+  background: var(--ov-bg);
+  color: var(--ov-fg);
+  border: 1px solid var(--ov-line);
+  border-radius: 14px;
+  backdrop-filter: blur(28px) saturate(1.3);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* 잠금 해제 — 창 전체가 드래그 핸들 + 또렷해진다(상시, 타이머 없음). */
+.overlay.unlocked {
+  -webkit-app-region: drag;
+  background: var(--ov-bg-move);
+  box-shadow: 0 0 0 1.5px var(--ov-accent);
+}
+
+/* 버튼·링크·입력·리사이즈 그립·편집 가능 블록·반복(잠금) 블록·편집 시트는 드래그 영역에서 제외.
+   빈 타임라인·헤더 빈 영역만 drag 를 상속해 그대로 창 이동 핸들이 된다.
+   반복 블록은 no-drag 라 잡아도 창이 안 움직이고(잠금) press 로 안내가 뜬다. */
+.overlay button,
+.overlay a,
+.overlay input,
+.resize-grip,
+.overlay .day-block.editable,
+.overlay .day-block.locked,
+.overlay .edit-sheet {
+  -webkit-app-region: no-drag;
+}
+
+/* 상단 헤더 — 상태 칩(좌) + 선택/잠금 버튼(우). */
+.ov-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-bottom: 6px;
+}
+
+.ov-status {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ov-fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ov-synced {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--ov-fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ctrl-btn {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 7px;
+  padding: 3px 9px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 140ms ease;
+}
+
+.ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ctrl-btn:active {
+  transform: scale(0.98);
+}
+
+/* 종일 일정 — 타임라인 위 칩 줄. */
+.allday-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding-bottom: 6px;
+}
+
+.allday-chip {
+  --block-accent: var(--ov-block-default);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ov-fg);
+  background: color-mix(in srgb, var(--block-accent) 30%, transparent);
+  border-left: 3px solid var(--block-accent);
+  border-radius: 5px;
+  padding: 2px 6px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 타임라인 스크롤 영역 — 남은 높이를 채우고 세로 스크롤. */
+.day-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scrollbar-width: thin;
+}
+
+.day-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.day-scroll::-webkit-scrollbar-thumb {
+  background: var(--ov-line);
+  border-radius: 3px;
+}
+
+.day-timeline {
+  position: relative;
+  width: 100%;
+}
+
+/* 시간 그리드 — 정시마다 얇은 선 + 좌측 라벨. */
+.hour-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--ov-line);
+}
+
+.hour-label {
+  position: absolute;
+  left: 0;
+  top: -6px;
+  /* JS GUTTER(30) 과 일치 — 블록 left=30 과 그리드/라벨 거터를 맞춘다. */
+  width: 30px;
+  font-size: 9px;
+  color: var(--ov-fg-faint);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-right: 7px;
+}
+
+/* 일정 블록 — 캘린더 색 솔리드 채움. depth 만큼 양쪽 들여쓰기 + 위 레이어(중첩). */
+.day-block {
+  --block-accent: var(--ov-block-default);
+  position: absolute;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  /* 구글 캘린더처럼 더 진하게 — 캘린더 색을 15% 어둡게 채운다. */
+  background: color-mix(in srgb, var(--block-accent) 85%, #000000);
+  color: rgba(255, 255, 255, 0.97);
+  /* 어두운 hairline 대신 부드러운 그림자 — 구글처럼 깔끔하게. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+}
+
+/* 중첩(부모 안에 든 일정) — 밝은 테두리 + 그림자로 부모 위에 카드처럼 띄운다(구글식). */
+.day-block.nested {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.6),
+    0 2px 7px rgba(0, 0, 0, 0.28);
+}
+
+/* 밝은 파스텔 색 위에서는 흰 글자가 안 보이므로 어두운 글자로. */
+.day-block.on-light {
+  color: rgba(0, 0, 0, 0.82);
+  text-shadow: none;
+}
+
+.day-block.nested.on-light {
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.18),
+    0 2px 7px rgba(0, 0, 0, 0.22);
+}
+
+.day-block.tight {
+  padding: 1px 8px;
+  justify-content: center;
+}
+
+/* 편집 가능한(단일·timed) 블록 — 클릭으로 편집 시트, 세로 드래그로 시간 이동. */
+.day-block.editable {
+  cursor: grab;
+}
+
+/* 반복(읽기전용) 블록 — 편집 불가를 desaturate + 자물쇠로 표시. no-drag 라 잡아도 창이 안 움직이고,
+   press 하면 "반복 일정은 편집할 수 없어요" 안내가 뜬다. (단일 일정의 grab/시간이동과 시각 구분.)
+   brightness 필터 금지 룰 회피 — saturate + opacity 로 "비활성/잠금" 을 표현한다. */
+.day-block.locked {
+  cursor: not-allowed;
+  filter: saturate(0.5);
+  opacity: 0.82;
+}
+
+/* 시간 이동 드래그 중 — 위로 띄워 잡고 있음을 보인다(직접 조작이라 위치 변화는 의도된 것). */
+.day-block.dragging {
+  cursor: grabbing;
+  z-index: 60;
+  opacity: 0.92;
+  box-shadow:
+    0 0 0 1.5px var(--ov-accent),
+    0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* 편집 블록 우상단 빠른 삭제 — 평소 숨김, 블록 hover 시 노출. 편집 시트 안 거치고 즉시 삭제. */
+.block-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--ov-now) 55%, transparent);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.day-block.editable:hover .block-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.block-delete:hover {
+  background: var(--ov-now);
+}
+
+.day-block-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-block-time {
+  font-size: 9.5px;
+  font-weight: 500;
+  opacity: 0.92;
+  font-variant-numeric: tabular-nums;
+}
+
+.meet-dot {
+  margin-left: 5px;
+  font-size: 8px;
+  vertical-align: middle;
+}
+
+/* 반복 블록 제목 앞 자물쇠 글리프 — 제목 앞이라 긴 제목 ellipsis 에 안 잘린다. */
+.lock-badge {
+  margin-right: 4px;
+  font-size: 8px;
+  vertical-align: middle;
+}
+
+/* now-line — 좌측 게이지(GUTTER=30)부터 가로 레드 라인 + 점. */
+.now-line {
+  position: absolute;
+  left: 30px;
+  right: 0;
+  height: 0;
+  border-top: 1.5px solid var(--ov-now);
+  z-index: 50;
+}
+
+.now-line::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -3.5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ov-now);
+}
+
+/* 하단 리사이즈 그립 — 해제 상태에서만, 세로 드래그로 창 높이 조절. */
+.resize-grip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  margin-top: 2px;
+  cursor: ns-resize;
+}
+
+.resize-grip-bar {
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ov-fg-faint);
+}
+
+/* 헤더 우측 액션 버튼 묶음 (+ 추가 · ↻ 재갱신 · 선택/잠금). */
+.ov-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+/* 아이콘성 작은 버튼(추가·재갱신) — ctrl-btn 과 같은 톤, 정사각. */
+.icon-btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 7px;
+  width: 22px;
+  height: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.icon-btn:active {
+  transform: scale(0.96);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.icon-btn.spinning {
+  opacity: 0.6;
+}
+
+/* 재동의 배너 — 쓰기 권한 없을 때(읽기 전용 토큰) 편집 전 안내. */
+.reconsent-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ov-fg);
+  background: color-mix(in srgb, var(--ov-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ov-accent) 45%, transparent);
+  border-radius: 8px;
+}
+
+.reconsent-btn {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ov-fg);
+  background: color-mix(in srgb, var(--ov-accent) 35%, transparent);
+  border: 1px solid var(--ov-accent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* 쓰기 실패 등 일시 피드백 한 줄. */
+.ov-feedback {
+  flex: 0 0 auto;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--ov-now) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ov-now) 50%, transparent);
+  border-radius: 8px;
+}
+
+/* 설정(잠금 해제) 모드 — 오버레이 전체 투명도 슬라이더 행. */
+.ov-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.ov-settings-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ov-fg-dim);
+}
+
+.ov-opacity-range {
+  flex: 1 1 auto;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--ov-line);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.ov-opacity-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--ov-accent);
+  border: none;
+  cursor: pointer;
+}
+
+/* 편집/생성 시트 — 카드 위를 덮는 작은 패널. */
+.edit-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--ov-bg-move);
+  border-radius: 14px;
+  backdrop-filter: blur(28px) saturate(1.3);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+}
+
+.edit-sheet-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ov-fg);
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.edit-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ov-fg-dim);
+}
+
+.edit-input {
+  font: inherit;
+  font-size: 12px;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 7px;
+  padding: 5px 8px;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--ov-accent);
+}
+
+.edit-times {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-times .edit-field {
+  flex: 1 1 0;
+}
+
+.edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.edit-actions .spacer {
+  flex: 1 1 auto;
+}
+
+.sheet-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 7px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.sheet-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sheet-btn.primary {
+  background: color-mix(in srgb, var(--ov-accent) 35%, transparent);
+  border-color: var(--ov-accent);
+}
+
+.sheet-btn.danger {
+  color: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--ov-now) 28%, transparent);
+  border-color: color-mix(in srgb, var(--ov-now) 55%, transparent);
+}
+
+.message {
+  font-size: 13px;
+  color: var(--ov-fg-dim);
+  padding: 4px 2px;
+}
+
+.signin-btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 9px;
+  padding: 8px 12px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 140ms ease;
+}
+
+.signin-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.signin-btn:active {
+  transform: scale(0.98);
+}

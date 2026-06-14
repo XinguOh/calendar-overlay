@@ -1,0 +1,24 @@
+{
+  "name": "calendar-overlay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.2.2",
+  "description": "A quiet, always-on-top macOS overlay for your Google Calendar — now & next, at a glance.",
+  "scripts": {
+    "dev": "concurrently -k -n next,electron \"pnpm --filter @apps/calendar-overlay dev\" \"wait-on http://localhost:3010 && pnpm --filter @apps/calendar-overlay-desktop dev\"",
+    "package": "pnpm --filter @apps/calendar-overlay-desktop package",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.2.6",
+    "concurrently": "^9.0.0",
+    "eslint": "10.4.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.59.4",
+    "wait-on": "^8.0.0"
+  }
+}
