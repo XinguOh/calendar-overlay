@@ -22,6 +22,14 @@ function ev(
 const NOW = new Date("2026-06-14T10:00:00+09:00")
 const idOf = (b: { event: NormalizedEvent }) => b.event.id
 
+// startTs 는 NOW 가 속한 날의 로컬 자정 → topMin 은 자정 기준. CI 타임존 독립을 위해 동적 산출.
+const dayStart = (() => {
+  const d = new Date(NOW)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+})()
+const topMinOf = (iso: string) => Math.round((Date.parse(iso) - dayStart) / 60000)
+
 describe("layoutDay", () => {
   it("포함 관계는 중첩 depth + 시간비례 topMin/durationMin", () => {
     const day = layoutDay(
@@ -36,9 +44,9 @@ describe("layoutDay", () => {
     const child = day.blocks[1]!
     expect(parent.depth).toBe(0)
     expect(child.depth).toBe(1) // 안에 든 일정
-    expect(parent.topMin).toBe(60) // startTs=10:00 → 11:00 은 +60분
+    expect(parent.topMin).toBe(topMinOf("2026-06-14T11:00:00+09:00")) // 자정 기준 오프셋
     expect(parent.durationMin).toBe(240)
-    expect(child.topMin).toBe(120)
+    expect(child.topMin).toBe(topMinOf("2026-06-14T12:00:00+09:00"))
     expect(child.durationMin).toBe(60)
   })
 
@@ -84,21 +92,23 @@ describe("layoutDay", () => {
     expect(day.allDay.map((e) => e.id)).toEqual(["holiday"])
   })
 
-  it("일정이 없어도 range 는 최소 60분, now 를 포함", () => {
+  it("일정이 없어도 range 는 하루 전체(24h)이고 now 를 포함", () => {
     const day = layoutDay([], NOW)
     expect(day.blocks).toEqual([])
     expect(day.allDay).toEqual([])
-    expect(day.totalMin).toBeGreaterThanOrEqual(60)
+    expect(day.totalMin).toBe(1440)
+    expect(day.startTs).toBeLessThanOrEqual(NOW.getTime())
+    expect(day.startTs + day.totalMin * 60000).toBeGreaterThan(NOW.getTime())
   })
 
-  it("과거 일정만 있어도 range 가 now 까지 늘어남", () => {
+  it("과거 일정만 있어도 하루 전체라 now 를 포함", () => {
     const day = layoutDay(
       [ev({ id: "past", start: "2026-06-14T08:00:00+09:00", end: "2026-06-14T09:00:00+09:00" })],
       NOW,
     )
-    // 08:00 ~ 10:00(now 정시) = 120분
-    expect(day.totalMin).toBe(120)
-    expect(day.blocks[0]!.topMin).toBe(0)
+    // 하루 전체(자정~자정) = 24h
+    expect(day.totalMin).toBe(1440)
+    expect(day.blocks[0]!.topMin).toBe(topMinOf("2026-06-14T08:00:00+09:00"))
     expect(day.blocks[0]!.durationMin).toBe(60)
   })
 })

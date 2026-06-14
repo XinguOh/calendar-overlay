@@ -108,7 +108,7 @@ export async function signIn(): Promise<AuthStatus> {
       code_challenge_method: "S256",
       state,
       access_type: "offline",
-      prompt: "consent", // 매 로그인 동의 → refresh_token 보장
+      prompt: "select_account consent", // 계정 선택 화면 + 매 로그인 동의(refresh_token 보장) → 계정 전환 가능
     }).toString()
 
   await shell.openExternal(authUrl)

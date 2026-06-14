@@ -243,6 +243,26 @@ function DayTimeline({
     el.addEventListener("pointercancel", onPointerUp)
   }
 
+  // 빈 영역을 잡아끌어 세로 스크롤 — 해제 상태에서 day-scroll 은 no-drag(창 이동이 아니라 스크롤).
+  // 블록 위 제스처(onBlockDown)는 stopPropagation 으로 격리돼 여기로 오지 않는다(빈 영역만).
+  function onScrollPan(e: ReactPointerEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    el.setPointerCapture(e.pointerId)
+    const startY = e.clientY
+    const startTop = el.scrollTop
+    const onPointerMove = (ev: PointerEvent) => {
+      el.scrollTop = startTop - (ev.clientY - startY)
+    }
+    const onPointerUp = () => {
+      el.removeEventListener("pointermove", onPointerMove)
+      el.removeEventListener("pointerup", onPointerUp)
+      el.removeEventListener("pointercancel", onPointerUp)
+    }
+    el.addEventListener("pointermove", onPointerMove)
+    el.addEventListener("pointerup", onPointerUp)
+    el.addEventListener("pointercancel", onPointerUp)
+  }
+
   const height = day.totalMin * PX_PER_MIN
   const nowMin = (nowTs - day.startTs) / 60000
   const nowVisible = nowMin >= 0 && nowMin <= day.totalMin
@@ -253,7 +273,7 @@ function DayTimeline({
   }
 
   return (
-    <div className="day-scroll" ref={scrollRef}>
+    <div className="day-scroll" ref={scrollRef} onPointerDown={onScrollPan}>
       <div className="day-timeline" style={{ height }}>
         {marks.map((mk) => (
           <div key={mk.top} className="hour-row" style={{ top: mk.top }}>
@@ -455,7 +475,15 @@ export default function OverlayPage() {
     if (!bridge) return
     setScopeRejected(false)
     await bridge.signOut()
-    await bridge.signIn() // 새 scope(쓰기) 동의 — prompt=consent 로 재동의 화면. canWrite·email 은 후속 broadcast 로 갱신.
+    await bridge.signIn() // 새 scope(쓰기) 동의 재요청. canWrite·email 은 후속 broadcast 로 갱신.
+  }
+
+  // 계정 전환 — 로그아웃 후 다른 구글 계정으로 재로그인(prompt=select_account 라 계정 선택 화면이 뜬다).
+  async function switchAccount() {
+    const bridge = window.overlay
+    if (!bridge) return
+    await bridge.signOut()
+    await bridge.signIn()
   }
 
   async function doRefresh() {
@@ -612,6 +640,16 @@ export default function OverlayPage() {
             value={opacity}
             onChange={(e) => setOpacity(Number(e.target.value))}
           />
+        </div>
+      ) : null}
+      {showActions && state.status === "ready" && state.email ? (
+        <div className="ov-account">
+          <span className="ov-account-email" title={state.email}>
+            {state.email}
+          </span>
+          <OvButton className="ov-account-switch" onClick={() => void switchAccount()}>
+            계정 전환
+          </OvButton>
         </div>
       ) : null}
       <Body

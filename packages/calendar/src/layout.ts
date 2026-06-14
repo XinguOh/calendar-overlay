@@ -17,11 +17,25 @@ function ceilToHour(ts: number): number {
   return d.getTime()
 }
 
+function startOfDay(ts: number): number {
+  const d = new Date(ts)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+function endOfDay(ts: number): number {
+  // 다음날 0시 = 당일 24시.
+  const d = new Date(ts)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 1)
+  return d.getTime()
+}
+
 /**
  * 정규화된 일정 + 현재 시각 → 하루 타임라인 레이아웃.
  *
  * - timed 일정만 타임라인에 배치(종일은 allDay 로 분리 — 시간 점유가 아님).
- * - range 는 가장 이른 시작 ~ 가장 늦은 끝(시 단위로 정렬), now 도 포함해 now-line 이 항상 보이게.
+ * - range 는 기본이 하루 전체(로컬 자정~자정). 일정이 자정을 넘어가면 그만큼만 확장 — 일정이 없어도 24h 스크롤 가능, now-line·now 자동스크롤은 now 가 항상 그날 안이라 그대로.
  * - depth: 다른 일정에 (시간상) 포함/겹쳐 시작하면 그 안에 든 깊이. 스택 기반 — 시작 오름차순,
  *   같은 시작이면 끝 내림차순(컨테이너 먼저)으로 정렬해 포함 관계를 깊이로 환산한다.
  *   renderer 가 depth 만큼 왼쪽 들여쓰기 + 위 레이어로 그려 구글 캘린더식 중첩을 낸다.
@@ -32,11 +46,12 @@ export function layoutDay(events: NormalizedEvent[], now: Date): DayLayout {
   const nowTs = now.getTime()
 
   const bounds = timed.flatMap((e) => [Date.parse(e.start), Date.parse(e.end)])
-  const minTs = Math.min(nowTs, ...(bounds.length ? bounds : [nowTs]))
-  const maxTs = Math.max(nowTs, ...(bounds.length ? bounds : [nowTs]))
-
-  const startTs = floorToHour(minTs)
-  const endTs = ceilToHour(maxTs)
+  const dayStart = startOfDay(nowTs)
+  const dayEnd = endOfDay(nowTs)
+  // 하루 전체(로컬 자정~자정)를 기본 범위로 깔아 일정이 없어도 24h 스크롤 가능.
+  // 일정이 그 밖으로 벗어나면(자정 넘김 등) 그만큼만 확장.
+  const startTs = floorToHour(Math.min(dayStart, ...(bounds.length ? bounds : [dayStart])))
+  const endTs = ceilToHour(Math.max(dayEnd, ...(bounds.length ? bounds : [dayEnd])))
   const totalMin = Math.max(60, Math.round((endTs - startTs) / MS_PER_MIN))
 
   // 컨테이너(먼저 시작·늦게 끝)가 앞서도록 정렬.

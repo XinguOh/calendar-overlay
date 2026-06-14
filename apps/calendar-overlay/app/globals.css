@@ -71,13 +71,14 @@ body {
   box-shadow: 0 0 0 1.5px var(--ov-accent);
 }
 
-/* 버튼·링크·입력·리사이즈 그립·편집 가능 블록·반복(잠금) 블록·편집 시트는 드래그 영역에서 제외.
-   빈 타임라인·헤더 빈 영역만 drag 를 상속해 그대로 창 이동 핸들이 된다.
+/* 버튼·링크·입력·리사이즈 그립·데이뷰 스크롤·편집 가능 블록·반복(잠금) 블록·편집 시트는 드래그 영역에서 제외.
+   day-scroll 이 no-drag 라 데이뷰를 잡아끌면 창 이동이 아니라 세로 스크롤(onScrollPan) — 창 이동은 헤더(.ov-head) 빈 영역으로.
    반복 블록은 no-drag 라 잡아도 창이 안 움직이고(잠금) press 로 안내가 뜬다. */
 .overlay button,
 .overlay a,
 .overlay input,
 .resize-grip,
+.day-scroll,
 .overlay .day-block.editable,
 .overlay .day-block.locked,
 .overlay .edit-sheet {
@@ -496,6 +497,49 @@ body {
   background: var(--ov-accent);
   border: none;
   cursor: pointer;
+}
+
+/* 계정 행 — 현재 구글 계정(이메일) + 전환 버튼. 해제(설정) 상태에서만 보인다. */
+.ov-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.ov-account-email {
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ov-fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ov-account-switch {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 7px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.ov-account-switch:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ov-account-switch:active {
+  transform: scale(0.98);
 }
 
 /* 편집/생성 시트 — 카드 위를 덮는 작은 패널. */
