@@ -94,10 +94,20 @@ body {
   justify-content: space-between;
   gap: 8px;
   flex: 0 0 auto;
-  /* 위아래 여백을 넉넉히 — 드래그 띠를 도톰하게 키워 잡기 쉽게(헤더가 한 줄이라 얇아 좌상단만 잡히던 체감 해소). */
+  /* 위아래 여백을 넉넉히 — 드래그 띠를 도톰하게. */
   padding-top: 10px;
   padding-bottom: 10px;
   -webkit-app-region: drag;
+}
+
+/* 이 환경(Electron+정적 export)에선 -webkit-app-region 이 자손에 전파되지 않아,
+   헤더 자식(상태 칩·액션 래퍼·그 안 텍스트)이 부모 drag 를 가려 맨 좌우 패딩만 잡혔다.
+   → 헤더의 모든 자손에 drag 를 직접 박고, 버튼만 no-drag 로 도려낸다. */
+.ov-head * {
+  -webkit-app-region: drag;
+}
+.ov-head button {
+  -webkit-app-region: no-drag;
 }
 
 .ov-status {
