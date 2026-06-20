@@ -416,6 +416,49 @@ function startResize(e: ReactPointerEvent<HTMLDivElement>) {
   grip.addEventListener("pointercancel", onUp)
 }
 
+// 버튼·링크·입력·슬라이더 위에서 시작된 포인터는 드래그로 보지 않는다(클릭과 충돌 방지).
+function isInteractiveTarget(el: EventTarget | null): boolean {
+  return (
+    el instanceof Element &&
+    el.closest("button, a, input, select, textarea, [role='button']") !== null
+  )
+}
+
+// 헤더 드래그로 창 이동 — CSS -webkit-app-region 대신 JS pointer + IPC(setPosition).
+// 시작 시점의 스크린 좌표를 기억하고 move 마다 누적 이동량을 보낸다(main 이 기준점+이동량으로 절대 배치).
+function startWindowDrag(e: ReactPointerEvent<HTMLElement>) {
+  if (e.button !== 0) return // 좌클릭만
+  if (isInteractiveTarget(e.target)) return // +·↻·설정/저장 버튼 위면 드래그 안 함
+  e.preventDefault()
+  const head = e.currentTarget
+  // 포인터 캡처 — 커서가 헤더/창 밖으로 빠르게 나가도 move/up 이 이 요소로 보장 전달.
+  head.setPointerCapture(e.pointerId)
+  const startScreenX = e.screenX
+  const startScreenY = e.screenY
+  window.overlay?.dragStart()
+  let raf = 0
+  let pending: { dx: number; dy: number } | null = null
+  const onMove = (ev: PointerEvent) => {
+    pending = { dx: ev.screenX - startScreenX, dy: ev.screenY - startScreenY }
+    if (raf) return
+    // 프레임당 1회만 IPC — pointermove 폭주를 60fps 로 coalesce(resize 와 동일 패턴).
+    raf = requestAnimationFrame(() => {
+      raf = 0
+      if (pending) window.overlay?.dragMove(pending.dx, pending.dy)
+    })
+  }
+  const onUp = () => {
+    if (raf) cancelAnimationFrame(raf)
+    head.removeEventListener("pointermove", onMove)
+    head.removeEventListener("pointerup", onUp)
+    head.removeEventListener("pointercancel", onUp)
+    window.overlay?.dragEnd()
+  }
+  head.addEventListener("pointermove", onMove)
+  head.addEventListener("pointerup", onUp)
+  head.addEventListener("pointercancel", onUp)
+}
+
 // 새 일정 기본 시각 — 다음 30분 경계 ~ +1시간.
 function defaultDraft(): { start: string; end: string } {
   const d = new Date()
@@ -588,7 +631,7 @@ export default function OverlayPage() {
 
   return (
     <main className={state.locked ? "overlay" : "overlay unlocked"} style={{ opacity }}>
-      <header className="ov-head">
+      <header className="ov-head" onPointerDown={startWindowDrag}>
         <span className="ov-status">
           {ready ? nowChip(state.now) : null}
           {ready ? <span className="ov-synced">갱신 {clock(state.lastSyncedAt)}</span> : null}

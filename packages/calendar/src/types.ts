@@ -162,6 +162,15 @@ export interface OverlayBridge {
   setControlHover(hovered: boolean): void
   /** 하단 리사이즈 그립 드래그로 정한 창 높이(px) — x/y/너비 유지, main 이 영속한다. */
   resizeTo(height: number): void
+  /**
+   * 헤더 드래그 시작 — main 이 현재 창 위치를 기준점으로 캡처한다.
+   * 창 이동은 CSS -webkit-app-region 대신 JS pointer + setPosition 으로 구현(macOS 투명·frameless 창에서 app-region 불안정 회피).
+   */
+  dragStart(): void
+  /** 드래그 시작 시점 대비 스크린 이동량(px) — main 이 기준점+이동량으로 setPosition. 영속은 main 의 moved 핸들러가 처리. */
+  dragMove(dx: number, dy: number): void
+  /** 드래그 종료 — main 의 기준점 해제. */
+  dragEnd(): void
   /** 저장된 오버레이 투명도(0.35~1) 읽기 — renderer 가 마운트 시 복원. main(window.json)이 SSOT, 시각 적용은 renderer CSS. */
   getOpacity(): Promise<number>
   /** 오버레이 투명도 영속("저장" 클릭 시) — main 이 window.json 에 기록. 토큰·민감정보 무관. */

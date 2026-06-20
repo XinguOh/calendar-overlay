@@ -41,6 +41,8 @@ let locked = true
 let controlHover = false
 let overlayWin: BrowserWindow | null = null
 let tray: Tray | null = null
+// 헤더 JS 드래그(=CSS app-region 대체)의 기준점 — 드래그 시작 시점의 창 좌상단(x,y). 드래그 중에만 non-null.
+let dragOrigin: { x: number; y: number } | null = null
 
 /** 통과 = 잠금 && !버튼hover. 잠금이어도 버튼 위에선 통과 OFF 라 그 버튼만 클릭된다. */
 function applyMouse(): void {
@@ -109,6 +111,25 @@ function registerIpc(): void {
   ipcMain.handle("overlay:getOpacity", () => loadOpacity())
   ipcMain.on("overlay:saveOpacity", (_event, value: number) => saveOpacity(value))
   ipcMain.on("overlay:online", () => triggerRefresh())
+
+  // 헤더 드래그 이동 — CSS -webkit-app-region 대신 JS 로 구현(macOS 투명·frameless 창에서 app-region 이
+  // 자손 비전파+불안정해 패키지 빌드에서 가운데가 안 잡혔다). renderer 가 스크린 이동량(dx,dy)을 보내면
+  // 시작 시점 창 위치+이동량으로 절대 setPosition — 프레임 누락이 오차로 누적되지 않는다.
+  ipcMain.on("overlay:dragStart", () => {
+    if (overlayWin) {
+      const { x, y } = overlayWin.getBounds()
+      dragOrigin = { x, y }
+    }
+  })
+  ipcMain.on("overlay:dragMove", (_event, d: { dx: number; dy: number }) => {
+    if (overlayWin && dragOrigin) {
+      overlayWin.setPosition(Math.round(dragOrigin.x + d.dx), Math.round(dragOrigin.y + d.dy))
+    }
+  })
+  // 위치 영속은 별도 코드 불필요 — setPosition 이 moved 이벤트를 발생시켜 window.ts 의 persist 가 저장한다.
+  ipcMain.on("overlay:dragEnd", () => {
+    dragOrigin = null
+  })
 
   // 일정 쓰기 — renderer 는 의도(payload)만 보내고 main 이 Google API 호출. 토큰은 건너오지 않는다.
   // 편집 후 자동 갱신하지 않는다(사용자 결정) — renderer 가 낙관적 업데이트로 로컬 반영하고,
