@@ -85,7 +85,9 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* 상단 헤더 — 상태 칩(좌) + 선택/잠금 버튼(우). */
+/* 상단 헤더 — 상태 칩(좌) + 선택/잠금 버튼(우).
+   헤더 전 영역을 드래그 핸들로 명시(잠금 해제 시 .overlay.unlocked cascade 와 별개로 직접 박음 — 어디를 잡아도 창 이동).
+   잠금 상태에선 main 이 setIgnoreMouseEvents 로 창을 클릭 통과시키므로 무해. 우측 버튼만 no-drag 로 빠진다. */
 .ov-head {
   display: flex;
   align-items: center;
@@ -93,12 +95,14 @@ body {
   gap: 8px;
   flex: 0 0 auto;
   padding-bottom: 6px;
+  -webkit-app-region: drag;
 }
 
 .ov-status {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 11px;
   font-weight: 600;
