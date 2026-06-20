@@ -14,6 +14,8 @@ permissions:
 jobs:
   build:
     runs-on: macos-14 # Apple Silicon(arm64) — 산출물도 arm64
+    env:
+      TZ: Asia/Seoul # 앱은 사용자 로컬 TZ 기반(layoutDay 자정 계산) — 테스트도 그 전제라 CI 를 KST 로 고정
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version 은 package.json packageManager 필드에서 읽음
