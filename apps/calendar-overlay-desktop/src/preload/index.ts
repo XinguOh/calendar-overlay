@@ -23,6 +23,13 @@ const bridge: OverlayBridge = {
       ipcRenderer.off("overlay:state", handler)
     }
   },
+  onLockChanged: (callback) => {
+    const handler = (_event: unknown, locked: boolean) => callback(locked)
+    ipcRenderer.on("overlay:locked", handler)
+    return () => {
+      ipcRenderer.off("overlay:locked", handler)
+    }
+  },
   toggleLock: () => ipcRenderer.invoke("overlay:toggleLock") as Promise<void>,
   setControlHover: (hovered) => ipcRenderer.send("overlay:controlHover", hovered),
   resizeTo: (height) => ipcRenderer.send("overlay:resize", height),

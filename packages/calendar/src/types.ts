@@ -148,6 +148,8 @@ export interface OverlayBridge {
   getOverlayState(): Promise<OverlayState>
   /** 상태 변경 구독. 반환값은 구독 해제 함수. */
   onOverlayStateChanged(callback: (state: OverlayState) => void): () => void
+  /** 잠금 상태만 변경 구독 — 편집 중 낙관적 day 를 덮지 않도록 full state 대신 locked 만 머지. 반환=해제 함수. */
+  onLockChanged(callback: (locked: boolean) => void): () => void
   /**
    * 잠금/해제 토글. 해제(locked=false) 시 카드 상호작용+상시 드래그, 잠금 시 완전 클릭 통과.
    * 진입점: globalShortcut·Tray(main) + 카드 내 컨트롤 버튼.

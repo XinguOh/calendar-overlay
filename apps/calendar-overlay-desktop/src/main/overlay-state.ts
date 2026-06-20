@@ -25,8 +25,12 @@ export function getState(): OverlayState {
 /** 잠금 상태 토글 — 캘린더 재요청 없이 상태에 병합만 한다. */
 export function setLocked(value: boolean): void {
   locked = value
-  current = { ...current, locked }
-  broadcast()
+  current = { ...current, locked } // main SSOT 내부 일관성 유지(getOverlayState pull 대비)
+  // full broadcast(overlay:state) 대신 locked 만 push — 편집 직후 renderer 의 낙관적 day 를 덮지 않게.
+  // (current.day 는 쓰기 후 갱신되지 않아 stale 이므로 full push 하면 편집이 사라진다.)
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send("overlay:locked", locked)
+  }
 }
 
 export async function refreshState(now: Date = new Date()): Promise<void> {

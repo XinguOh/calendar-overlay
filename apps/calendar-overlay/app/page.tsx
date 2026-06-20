@@ -451,7 +451,15 @@ export default function OverlayPage() {
       .getOverlayState()
       .then(setState)
       .catch(() => {})
-    return bridge.onOverlayStateChanged(setState)
+    const offState = bridge.onOverlayStateChanged(setState)
+    // 잠금 토글은 day 를 덮지 않게 locked 만 머지 — 편집 직후 낙관적 업데이트 보존.
+    const offLock = bridge.onLockChanged((locked) =>
+      setState((prev) => ({ ...prev, locked }) as OverlayState),
+    )
+    return () => {
+      offState()
+      offLock()
+    }
   }, [])
 
   // 피드백은 잠시 뒤 자동 사라짐.
