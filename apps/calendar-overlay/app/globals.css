@@ -94,7 +94,9 @@ body {
   justify-content: space-between;
   gap: 8px;
   flex: 0 0 auto;
-  padding-bottom: 6px;
+  /* 위아래 여백을 넉넉히 — 드래그 띠를 도톰하게 키워 잡기 쉽게(헤더가 한 줄이라 얇아 좌상단만 잡히던 체감 해소). */
+  padding-top: 10px;
+  padding-bottom: 10px;
   -webkit-app-region: drag;
 }
 
