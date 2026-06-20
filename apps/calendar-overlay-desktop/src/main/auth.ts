@@ -180,7 +180,7 @@ function startLoopback(expectedState: string): Promise<Loopback> {
         "Content-Type": "text/html; charset=utf-8",
       })
       if (error) {
-        res.end("<p>로그인이 취소되었습니다. 이 창을 닫으세요.</p>")
+        res.end("<p>로그인을 취소했어요. 이 창을 닫아 주세요.</p>")
         fail(new Error("oauth_denied"))
       } else if (state !== expectedState) {
         res.end("state mismatch")
@@ -189,7 +189,7 @@ function startLoopback(expectedState: string): Promise<Loopback> {
         res.end("no code")
         fail(new Error("no_code"))
       } else {
-        res.end("<p>로그인 완료. 이 창을 닫아도 됩니다.</p>")
+        res.end("<p>로그인됐어요. 이 창을 닫아도 돼요.</p>")
         settle(code)
       }
     })

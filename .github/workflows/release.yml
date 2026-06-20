@@ -1,0 +1,33 @@
+name: Release
+
+# v* 태그가 push 되면 macOS(arm64)에서 Electron 앱을 빌드해 GitHub Release 에 .app(.zip) 을 올린다.
+# 태그는 보통 모노레포(xingu-dev)의 sync 워크플로가 자동으로 민다 — 수동 태그 push 도 동일하게 동작한다.
+# standalone 이 public 이라 macOS GitHub-hosted runner 가 무료다.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # softprops/action-gh-release 가 Release 생성·asset 업로드에 필요(기본 GITHUB_TOKEN 으로 충분)
+
+jobs:
+  build:
+    runs-on: macos-14 # Apple Silicon(arm64) — 산출물도 arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version 은 package.json packageManager 필드에서 읽음
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Quality gate
+        run: pnpm -r typecheck && pnpm -r lint && pnpm -r test
+      - name: Build (.app/.zip)
+        run: pnpm package # EXPORT next build + esbuild 번들 + electron-builder --mac(zip, 미서명)
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/calendar-overlay-desktop/release/*-arm64-mac.zip
+          generate_release_notes: true

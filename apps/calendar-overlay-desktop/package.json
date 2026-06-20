@@ -1,6 +1,6 @@
 {
   "name": "@apps/calendar-overlay-desktop",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
@@ -14,14 +14,24 @@
     "appId": "kr.xingu.calendar-overlay",
     "productName": "Calendar Overlay",
     "asar": true,
-    "files": ["dist/**", "package.json"],
-    "extraResources": [{ "from": "../calendar-overlay/out", "to": "renderer" }],
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../calendar-overlay/out",
+        "to": "renderer"
+      }
+    ],
     "mac": {
       "target": "zip",
       "identity": null,
       "category": "public.app-category.productivity"
     },
-    "directories": { "output": "release" }
+    "directories": {
+      "output": "release"
+    }
   },
   "dependencies": {
     "@repo/calendar": "workspace:*"

@@ -80,7 +80,7 @@ function writeFailureMessage(reason: Exclude<WriteResult, { ok: true }>["reason"
     case "recurring-readonly":
       return "반복 일정은 편집할 수 없어요."
     case "network":
-      return "네트워크 오류로 적용하지 못했어요."
+      return "연결 문제로 적용하지 못했어요."
     default:
       return "적용하지 못했어요."
   }
