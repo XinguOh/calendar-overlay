@@ -27,6 +27,11 @@ jobs:
       - name: Quality gate
         run: pnpm -r typecheck && pnpm -r lint && pnpm -r test
       - name: Build (.app/.zip)
+        env:
+          # esbuild define 이 번들에 구워넣는 OAuth client(데스크톱 client_id 는 PKCE 전제라 비밀 아님).
+          # 없으면 빈 문자열로 박혀 배포본이 일정을 못 불러온다(로컬 빌드는 .env.local 로 자동 주입).
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: pnpm package # EXPORT next build + esbuild 번들 + electron-builder --mac(zip, 미서명)
       - name: Publish release
         uses: softprops/action-gh-release@v2
