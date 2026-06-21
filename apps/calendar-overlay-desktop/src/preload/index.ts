@@ -47,6 +47,7 @@ const bridge: OverlayBridge = {
   deleteEvent: (id: string, calendarId: string) =>
     ipcRenderer.invoke("calendar:delete", id, calendarId) as Promise<WriteResult>,
   refreshNow: () => ipcRenderer.invoke("overlay:refresh") as Promise<void>,
+  quit: () => ipcRenderer.send("app:quit"),
 }
 
 contextBridge.exposeInMainWorld("overlay", bridge)

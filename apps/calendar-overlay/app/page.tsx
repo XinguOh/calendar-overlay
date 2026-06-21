@@ -482,6 +482,9 @@ export default function OverlayPage() {
   const [refreshing, setRefreshing] = useState(false)
   // 오버레이 전체 투명도(설정 모드 슬라이더). 0.35~1, '저장' 시 localStorage 영속.
   const [opacity, setOpacity] = useState(1)
+  // 끄기 버튼 2단계 확인 — 첫 클릭은 "정말 끌까요?"로 바꾸고, 2초 안에 다시 안 누르면 원복.
+  const [confirmingQuit, setConfirmingQuit] = useState(false)
+  const quitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const bridge = window.overlay
@@ -511,6 +514,13 @@ export default function OverlayPage() {
     const t = setTimeout(() => setFeedback(null), 4000)
     return () => clearTimeout(t)
   }, [feedback])
+
+  // 끄기 확인 타이머 — 언마운트 시 정리.
+  useEffect(() => {
+    return () => {
+      if (quitTimer.current) clearTimeout(quitTimer.current)
+    }
+  }, [])
 
   // 저장된 투명도 복원 — main(window.json) 이 SSOT. 마운트 1회, async(.then) 라 effect-내-setState 룰 안전.
   useEffect(() => {
@@ -624,6 +634,17 @@ export default function OverlayPage() {
     void window.overlay?.toggleLock()
   }
 
+  // 끄기 버튼 — 첫 클릭은 확인 단계로, 두 번째 클릭에서 실제 종료. 2초 뒤 확인 자동 해제.
+  function onQuit() {
+    if (confirmingQuit) {
+      if (quitTimer.current) clearTimeout(quitTimer.current)
+      window.overlay?.quit()
+      return
+    }
+    setConfirmingQuit(true)
+    quitTimer.current = setTimeout(() => setConfirmingQuit(false), 2000)
+  }
+
   const ready = state.status === "ready"
   const showActions = !state.locked && ready
   const canCreate = canWrite && primaryCalendarId !== null
@@ -656,6 +677,16 @@ export default function OverlayPage() {
               onClick={() => void doRefresh()}
             >
               ↻
+            </OvButton>
+          ) : null}
+          {showActions ? (
+            <OvButton
+              className={confirmingQuit ? "quit-btn confirming" : "quit-btn"}
+              aria-label="오버레이 끄기"
+              title="끄기"
+              onClick={onQuit}
+            >
+              {confirmingQuit ? "정말 끌까요?" : "끄기"}
             </OvButton>
           ) : null}
           {/* 잠금 상태에서도 이 버튼만 클릭되게 — hover 시 main 이 이 영역만 통과를 끈다. */}

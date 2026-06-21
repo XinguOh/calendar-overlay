@@ -143,6 +143,8 @@ function registerIpc(): void {
   // 재갱신 버튼 — 수동으로 최신 일정 fetch + broadcast. await 가능하게 refreshState 직접 반환
   // (버튼이 갱신 완료 시점까지 pending 상태를 표시할 수 있게).
   ipcMain.handle("overlay:refresh", () => refreshState())
+  // 카드 헤더 "끄기" 버튼 — Tray 우클릭 "종료"와 동일.
+  ipcMain.on("app:quit", () => app.quit())
 }
 
 /** 렌더러 로드 URL — dev 는 Next 서버(env.overlayUrl=localhost), 패키지 빌드는 번들된 정적 export(out/)를

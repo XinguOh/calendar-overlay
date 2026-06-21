@@ -420,6 +420,47 @@ body {
   opacity: 0.6;
 }
 
+/* 끄기 버튼 — 평소는 icon-btn 톤(텍스트 길이만큼 가로 패딩), 확인 단계는 위험색으로 강조. */
+.quit-btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ov-fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ov-line);
+  border-radius: 7px;
+  height: 21px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.quit-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.quit-btn:active {
+  transform: scale(0.96);
+}
+
+.quit-btn.confirming {
+  color: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--ov-now) 45%, transparent);
+  border-color: color-mix(in srgb, var(--ov-now) 70%, transparent);
+}
+
+.quit-btn.confirming:hover {
+  background: color-mix(in srgb, var(--ov-now) 60%, transparent);
+}
+
 /* 재동의 배너 — 쓰기 권한 없을 때(읽기 전용 토큰) 편집 전 안내. */
 .reconsent-banner {
   display: flex;

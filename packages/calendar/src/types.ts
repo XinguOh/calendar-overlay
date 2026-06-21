@@ -188,4 +188,6 @@ export interface OverlayBridge {
   deleteEvent(id: string, calendarId: string): Promise<WriteResult>
   /** 재갱신 버튼 — 최신 일정을 수동으로 fetch 해 broadcast 한다(외부 변경·편집 reconcile). */
   refreshNow(): Promise<void>
+  /** 앱 종료 — 카드 헤더 "끄기" 버튼(해제 상태)에서 진입. Tray "종료"와 동일하게 main 이 app.quit(). */
+  quit(): void
 }
